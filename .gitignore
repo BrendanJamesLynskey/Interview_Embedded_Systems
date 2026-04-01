@@ -1,0 +1,67 @@
+# Object files
+*.o
+*.a
+*.out
+*.so
+*.so.*
+
+# Executables
+*.elf
+*.bin
+*.hex
+*.axf
+
+# Build artifacts
+build/
+dist/
+*.d
+
+# Compiler and toolchain artifacts
+*.la
+*.lo
+*.loT
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Debug files
+.gdb_history
+*.jlink
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+
+# Dependencies
+*.dep
+
+# Firmware and related
+*.uvguard
+*.uvopt
+*.uvproj
+*.uvprojx
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Assembly generated
+*.lst
+*.map
+
+# CubeMX generated
+CubeMX/
+
+# GCC ARM toolchain
+arm-toolchain/
