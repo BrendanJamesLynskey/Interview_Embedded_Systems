@@ -494,28 +494,17 @@ Flash remaining: 262144 - 182784 = 79360 bytes (77.5 KB)
 
 ```
 SRAM layout (origin 0x20000000, 64 KB = 65536 bytes):
+  SRAM end = 0x20000000 + 0x10000 = 0x20010000
+
 +---------------------------+ 0x20000000
 | .data (runtime copy)      | 2048 bytes (2 KB)
 +---------------------------+ 0x20000800
 | .bss (zeroed at startup)  | 4096 bytes (4 KB)
 +---------------------------+ 0x20001800
-| (free heap, if any)       |
-+---------------------------+ 0x20008000  <- _estack (top of stack)
+| (free heap)               | 49 KB
++---------------------------+ 0x2000E000  <- _sstack (bottom of stack)
 | .stack (grows downward)   | 8192 bytes (8 KB)
-+---------------------------+ 0x20006000  <- _sstack (bottom of stack)
-
-Wait -- recalculate:
-  .data  starts at 0x20000000, ends at 0x20000800 (2 KB)
-  .bss   starts at 0x20000800, ends at 0x20001800 (4 KB)
-  Stack  8 KB at the top of SRAM: 0x20010000 - 0x20008000 wait, 64 KB SRAM ends at:
-  SRAM end = 0x20000000 + 0x10000 = 0x20010000
-
-  Stack at top: _estack = 0x20010000, _sstack = 0x2000E000 (8 KB below top)
-
-  .data:   0x20000000 -- 0x20000800   (2 KB)
-  .bss:    0x20000800 -- 0x20001800   (4 KB)
-  free:    0x20001800 -- 0x2000E000   (50176 bytes = 49 KB heap/free)
-  .stack:  0x2000E000 -- 0x20010000   (8 KB, grows downward from 0x20010000)
++---------------------------+ 0x20010000  <- _estack (initial SP)
 ```
 
 **Summary table:**

@@ -371,13 +371,13 @@ void sensor_task(void *pvParameters)
     for (;;) {
         /* WRONG: local variable goes out of scope */
         sensor_data_t data = read_sensor();       /* on the stack */
-        xQueueSend(xQueue, &data, portMAX_DELAY); /* copies the pointer, not the struct */
+        xQueueSend(xQueue, &data, portMAX_DELAY); /* copies the entire struct by value */
         /* data is destroyed when the loop iteration ends */
     }
 }
 ```
 
-Wait — FreeRTOS queues copy by value, not by pointer. If the queue item type is `sensor_data_t*` (a pointer), only the pointer address is copied, leaving the original data at risk. If the queue item type is `sensor_data_t` (the struct itself), the entire struct is deep-copied and the stack lifetime issue disappears — but large structs have a high copy cost.
+**Note:** FreeRTOS queues copy by value. If the queue item type is `sensor_data_t` (the struct itself), the entire struct is deep-copied at enqueue time — the stack lifetime issue disappears, but large structs carry a proportionally high copy cost. If the queue item type is `sensor_data_t*` (a pointer), only the pointer address is copied, leaving the original data at risk of being overwritten when the sender's stack frame is recycled.
 
 **Correct patterns for large data:**
 

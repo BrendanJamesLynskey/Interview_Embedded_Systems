@@ -674,8 +674,9 @@ Total IR length: 22 bits
 
 Correct addressing of Flash IC (device 3):
   Shift 22 bits: [Flash IR=8 bits] [FPGA BYPASS=1 bit] [MCU BYPASS=1 bit]
-  Wait -- BYPASS instruction is 1 bit all-ones per device.
-  So to program Flash: 0xFF [8b] | 0x1FF [10b but we use BYPASS=all-1s] | 0xF [4b]
+  The BYPASS instruction fills the IR with all-ones and places a single-bit BYPASS
+  register in the data path for that device. To program Flash:
+    0xFF [8b] | 0x3FF [10b BYPASS=all-1s] | 0xF [4b BYPASS=all-1s]
 
 If someone misconfigures FPGA IR as 6 bits instead of 10:
   Tool shifts only 18 bits total

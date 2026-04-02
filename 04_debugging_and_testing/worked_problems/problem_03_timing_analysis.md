@@ -47,9 +47,9 @@ Worst-case latency contributors:
   2. Higher-priority interrupt blocking   (depends on ISR duration)
   3. Critical sections (taskENTER_CRITICAL)
   4. Interrupt-disabled periods
-  5. Higher-priority task preemption      (CommTask at priority 4 can delay MotorCtrl at 5)
-     Wait -- actually MotorCtrl is priority 5 (higher), so lower-priority tasks
-     cannot delay it. Let us re-examine...
+  5. Higher-priority task preemption      (in FreeRTOS, higher number = higher priority;
+                                           MotorCtrl at priority 5 cannot be delayed by
+                                           lower-priority tasks — only by ISRs and critical sections)
 ```
 
 **Priority confusion is the first clue:** In FreeRTOS, higher priority number means higher priority. MotorCtrl at priority 5 will preempt CommTask at priority 4. So CommTask cannot delay MotorCtrl.
@@ -126,7 +126,7 @@ Observed (with the problem):
 
 **Root cause identified: LogTask is delaying MotorCtrl.**
 
-Wait -- LogTask is priority 2 and MotorCtrl is priority 5. How can a lower-priority task delay a higher-priority task?
+**LogTask is priority 2 and MotorCtrl is priority 5. A lower-priority task cannot directly preempt a higher-priority task, but it can delay it through shared resource contention.**
 
 ---
 

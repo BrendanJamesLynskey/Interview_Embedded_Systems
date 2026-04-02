@@ -630,15 +630,12 @@ FreeRTOS defines `configMAX_SYSCALL_INTERRUPT_PRIORITY` (e.g., 5 in priority bit
 configMAX_SYSCALL_INTERRUPT_PRIORITY = 5 (0x50 in 8-bit IPR)
 IRQ_A priority set by NVIC_SetPriority(IRQ_A, 5):
   On a 4-bit priority Cortex-M4, priorities are stored in bits[7:4] of the 8-bit field.
-  NVIC_SetPriority() shifts the value: IPR = (5 << (8 - 4)) = 0x50.  <-- correct
-
-Wait -- actually NVIC_SetPriority(IRQ_A, 5) on a 4-bit device stores 5 in bits[7:4]? 
-  No: CMSIS NVIC_SetPriority stores the value directly in the upper bits:
+  CMSIS NVIC_SetPriority() stores the value in the upper bits of the 8-bit IPR field:
   IPR register = (priority << (8 - __NVIC_PRIO_BITS))
-  If __NVIC_PRIO_BITS = 4: IPR = (5 << 4) = 0x50
-  
-  configMAX_SYSCALL_INTERRUPT_PRIORITY is often defined as 5 meaning
-  the RAW 8-bit register value 0x50 must match. 
+  If __NVIC_PRIO_BITS = 4: IPR = (5 << 4) = 0x50.  <-- correct
+
+  configMAX_SYSCALL_INTERRUPT_PRIORITY is typically defined as the RAW 8-bit register
+  value (e.g., 0x50), not the logical priority number.
 
 The crash occurs if:
   priority passed to NVIC_SetPriority = 5 (valid for 4-bit = logical level 5 of 0-15)

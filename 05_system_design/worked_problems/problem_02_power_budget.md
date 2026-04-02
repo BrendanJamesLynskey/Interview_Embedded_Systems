@@ -137,23 +137,23 @@ t=6050 ms to 60,000 ms: MCU in low-power mode (RTC running, TIMER0 armed).
 | SHT4x measurement | 0.4 mA | 10 ms | 400 * (10/3,600,000) = 0.00111 µAh |
 | SCD41 warm-up | 1.0 mA | 1000 ms | 1000 * (1000/3,600,000) = 0.2778 µAh |
 | SCD41 measurement | 13.0 mA | 5000 ms | 13000 * (5000/3,600,000) = 18.056 µAh |
-| I2C bus active (pull-ups: 2 x 4.7 kΩ to 3.3 V) | 0.70 mA | 6012 ms | 700 * (6012/3,600,000) = 1.169 µAh |
+| I2C bus active (pull-ups: 2 x 4.7 kΩ to 3.3 V) | 1.40 mA | 6012 ms | 1400 * (6012/3,600,000) = 2.338 µAh |
 | BLE radio active (3 adv events + standby between) | 4.0 mA avg | 25 ms | 4000 * (25/3,600,000) = 0.02778 µAh |
 | MCU + SoftDevice processing BLE | 4.0 mA | 25 ms | 0.02778 µAh |
 | MCU sleep (System-On, RAM retention, RTC, TIMER0) | 0.003 mA | 53,950 ms | 3 * (53950/3,600,000) = 0.04496 µAh |
 | Voltage regulator (if external; assume internal DCDC) | 0 extra | — | (nRF52840 internal DCDC; no external regulator IQ) |
-| **Total per 60-second cycle** | | | **19.640 µAh** |
+| **Total per 60-second cycle** | | | **20.809 µAh** |
 
 **Average current from this budget:**
 
 ```
 I_avg = Total_charge_per_cycle / cycle_period
-      = 19.640 µAh / (60 / 3600 h)
-      = 19.640 / 0.01667
-      = 1178 µA = 1.178 mA
+      = 20.809 µAh / (60 / 3600 h)
+      = 20.809 / 0.01667
+      = 1248 µA = 1.248 mA
 ```
 
-**This is 130x over budget.** The target is 9 µA; the initial design gives 1178 µA.
+**This is 139x over budget.** The target is 9 µA; the initial design gives 1248 µA.
 
 ---
 
@@ -163,8 +163,8 @@ I_avg = Total_charge_per_cycle / cycle_period
 
 | Component | Charge per cycle | Fraction of total |
 |---|---|---|
-| SCD41 measurement (13 mA, 5 s) | 18.056 µAh | **92%** |
-| I2C pull-up resistors (during sensor phase) | 1.169 µAh | 6% |
+| SCD41 measurement (13 mA, 5 s) | 18.056 µAh | **87%** |
+| I2C pull-up resistors (during sensor phase) | 2.338 µAh | 11% |
 | SCD41 warm-up | 0.278 µAh | 1.4% |
 | MCU active processing | 0.042 µAh | 0.2% |
 | All others | 0.095 µAh | 0.5% |
@@ -184,13 +184,13 @@ New CO2 contribution:
 **Optimisation 2: Replace I2C pull-up resistors with value 100 kΩ instead of 4.7 kΩ.**
 
 At 100 kΩ, I2C pull-up current = 3.3 V / 100 kΩ = 33 µA per line. Two lines = 66 µA.
-This reduces the I2C phase current from 700 µA to 66 µA.
+This reduces the I2C phase current from 1400 µA to 66 µA.
 
 Note: 100 kΩ limits I2C speed to ~100 kHz (standard mode). For the SHT4x and SCD41, this is acceptable.
 
 ```
 New I2C pull-up contribution (6 s at 66 µA):
-  66 µA * (6000/3,600,000) = 0.110 µAh per cycle (down from 1.169 µAh)
+  66 µA * (6000/3,600,000) = 0.110 µAh per cycle (down from 2.338 µAh)
 ```
 
 **Optimisation 3: Power gate the sensor VDD rail completely between measurements.**
