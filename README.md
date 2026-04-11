@@ -36,6 +36,7 @@ Real-time operating systems: task scheduling, synchronization primitives, priori
 - [Semaphores, Mutexes, and Queues](02_rtos/semaphores_mutexes_queues.md)
 - [Priority Inversion](02_rtos/priority_inversion.md)
 - [FreeRTOS Specifics](02_rtos/freertos_specifics.md)
+- [Real-Time Scheduling Theory](02_rtos/real_time_scheduling_theory.md)
 - [Coding Challenges](02_rtos/coding_challenges/)
 
 ## 03 Communication Protocols
