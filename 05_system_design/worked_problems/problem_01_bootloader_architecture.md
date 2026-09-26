@@ -255,10 +255,10 @@ Step  Check                    Failure action          Time (estimate)
       BOOTLOADER_VERSION
       (rejects images that require a newer bootloader)
 
-6     CRC-32 over payload       INVALID_SILENT          ~12 ms SW, ~2 ms HW CRC
+6     CRC-32 over payload       INVALID_SILENT          ~220 ms SW, ~2 ms HW CRC
       (fast integrity check)
 
-7     SHA-256 over payload      INVALID_SILENT          ~42 ms SW (no HW accel)
+7     SHA-256 over payload      INVALID_SILENT          ~500 ms SW (no HW accel)
       (required input for ECDSA)
 
 8     ECDSA-P256 verify         INVALID_SECURITY        ~800-1200 ms SW (!)
@@ -299,16 +299,16 @@ Hardware init (clocks, flash, QSPI)    80 ms
 Read boot descriptor from NVS          1 ms
 Validate Slot A or Slot B:
   Header read + magic/size checks      1 ms
-  CRC-32 (1.94 MB, SW, M33@120 MHz)   ~25 ms  (SW: ~13 cycles/byte; 2MB*13/120M)
-  SHA-256 (1.94 MB, SW, M33@120 MHz)  ~65 ms  (SW: ~4 MB/s on M33 = 500 ms/MB)
+  CRC-32 (1.94 MB, SW, M33@120 MHz)   ~220 ms (SW: ~13 cycles/byte; 2.03e6 B*13/120M)
+  SHA-256 (1.94 MB, SW, M33@120 MHz)  ~500 ms (SW: ~4 MB/s on M33 = 250 ms/MB)
   ECDSA-P256 verify (tinycrypt)        ~500 ms (M33@120 MHz is faster than M4@80 MHz)
 Update boot state (write NVS)          5 ms   (flash page write)
 Jump preparation and vector relocation 0.1 ms
 Application init (HAL, RTOS, drivers)  ~500 ms (application code, not bootloader)
 -------------------------------------
-Sub-total (single slot validation):    ~677 ms
+Sub-total (single slot validation):    ~1,307 ms
 Application init:                      ~500 ms
-Total:                                 ~1.18 seconds
+Total:                                 ~1.81 seconds
 ```
 
 **Conclusion: The 3-second SLA is achievable** for normal operation (single slot validation, application starts cleanly).
@@ -316,22 +316,22 @@ Total:                                 ~1.18 seconds
 **Worst case (both slots need validation, second slot falls back):**
 
 ```
-Validate Slot A (full validation): 677 ms
-Validate Slot B (full validation): 677 ms  [if Slot A fails after CRC but before boot]
+Validate Slot A (full validation): 1,307 ms
+Validate Slot B (full validation): 1,307 ms  [if Slot A fails after CRC but before boot]
 Application init:                  500 ms
-Total worst case:                  1.85 seconds
+Total worst case:                  ~3.1 seconds (~3.0 s counting hardware init once)
 ```
 
-Still within the 3-second SLA. Margin: ~1.15 seconds.
+This is at or just over the 3-second SLA — no margin with software CRC and SHA-256.
 
 **Risk: if ECDSA is slower than estimated.** On a Cortex-M33 with some crypto extensions, tinycrypt P256 verify has been measured at 500–800 ms at 120 MHz depending on specific implementation. In the pessimistic case (800 ms):
 
 ```
 Worst case (two ECDSA verifications):
-  800 ms + 800 ms + 200 ms (rest) + 500 ms (app init) = 2.3 seconds
+  800 ms + 800 ms + ~1,530 ms (rest, incl. two software CRC + SHA passes) + 500 ms (app init) ≈ 3.6 seconds
 ```
 
-This still meets the SLA. However, to ensure margin:
+This misses the SLA. To recover margin (hardware CRC/hash acceleration also removes most of the ~1.4 s spent on software CRC-32 and SHA-256 across two slots):
 - Use `mbedTLS` with Cortex-M hardware acceleration intrinsics, which can achieve ~200 ms for ECDSA-P256 on M33 with DSP extension enabled.
 - Alternatively: use EdDSA (Ed25519) with an optimised Curve25519 implementation, which runs in ~100 ms on M33 at 120 MHz.
 

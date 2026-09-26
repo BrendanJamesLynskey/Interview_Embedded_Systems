@@ -117,15 +117,15 @@ t=6021 ms: BLE radio TX:
            - SoftDevice prepares advertisement packet.
            - Radio powers up (~1 ms).
            - 3 advertisement events on channels 37, 38, 39.
-           - Each event: 0.5 ms TX at ~4.6 mA (0 dBm TX power).
+           - Each event: 0.5 ms TX at ~6.4 mA (0 dBm TX power, DC/DC).
            - Inter-event gaps: radio on standby at 0.5 mA for ~5 ms each.
            Total radio active window: ~25 ms.
 
 t=6046 ms: BLE radio powers down. MCU processing done.
 t=6050 ms: MCU enters System-On low-power mode.
-           TIMER0 set to fire at t=60,000 ms.
+           RTC1 compare set to fire at t=60,000 ms.
 
-t=6050 ms to 60,000 ms: MCU in low-power mode (RTC running, TIMER0 armed).
+t=6050 ms to 60,000 ms: MCU in low-power mode (RTC running, RTC1 compare armed).
            Duration: ~53,950 ms.
 ```
 
@@ -140,7 +140,7 @@ t=6050 ms to 60,000 ms: MCU in low-power mode (RTC running, TIMER0 armed).
 | I2C bus active (pull-ups: 2 x 4.7 kΩ to 3.3 V) | 1.40 mA | 6012 ms | 1400 * (6012/3,600,000) = 2.338 µAh |
 | BLE radio active (3 adv events + standby between) | 4.0 mA avg | 25 ms | 4000 * (25/3,600,000) = 0.02778 µAh |
 | MCU + SoftDevice processing BLE | 4.0 mA | 25 ms | 0.02778 µAh |
-| MCU sleep (System-On, RAM retention, RTC, TIMER0) | 0.003 mA | 53,950 ms | 3 * (53950/3,600,000) = 0.04496 µAh |
+| MCU sleep (System-On, RAM retention, RTC) | 0.003 mA | 53,950 ms | 3 * (53950/3,600,000) = 0.04496 µAh |
 | Voltage regulator (if external; assume internal DCDC) | 0 extra | — | (nRF52840 internal DCDC; no external regulator IQ) |
 | **Total per 60-second cycle** | | | **20.809 µAh** |
 
@@ -186,7 +186,7 @@ New CO2 contribution:
 At 100 kΩ, I2C pull-up current = 3.3 V / 100 kΩ = 33 µA per line. Two lines = 66 µA.
 This reduces the I2C phase current from 1400 µA to 66 µA.
 
-Note: 100 kΩ limits I2C speed to ~100 kHz (standard mode). For the SHT4x and SCD41, this is acceptable.
+Note: 100 kΩ meets the standard-mode (100 kHz) 1000 ns rise-time limit only if the bus capacitance is below about 12 pF (Rp(max) = tr / (0.8473 × Cb), NXP UM10204); on a real bus a lower clock rate or a smaller pull-up may be needed.
 
 ```
 New I2C pull-up contribution (6 s at 66 µA):
@@ -207,16 +207,16 @@ At 0.1 µA per sensor over 53.95 seconds: 0.2 µA * (53.95/3600) = 0.003 µAh �
 | SCD41 warm-up (every 10 min) | 1.0 mA | 1000 ms, 1 of 10 cycles | 0.2778 / 10 = 0.0278 µAh |
 | SHT4x measurement (every cycle) | 0.4 mA | 10 ms | 0.00111 µAh |
 | I2C pull-ups at 100 kΩ | 0.066 mA | 100 ms (sensor comms only) | 0.00183 µAh |
-| MCU active | 3.0 mA | 15 ms (reduced — no CO2 on 9 of 10 cycles avg) | avg 3.0*(15 + 90*1/10)/3.6M = 0.0125 µAh |
+| MCU active | 3.0 mA | 15 ms (reduced — no CO2 on 9 of 10 cycles avg) | avg 3.0*(15 + 90*1/10)/3.6M = 0.0200 µAh |
 | BLE radio (3 advertisements) | 4.0 mA avg | 25 ms | 0.02778 µAh |
 | MCU sleep (59.87 s, 0.003 mA) | 0.003 mA | 59,870 ms | 0.04989 µAh |
 | Load switch IQ | 0.001 mA | 60,000 ms | 0.01667 µAh |
-| **Total per 60-second cycle** | | | **1.942 µAh** |
+| **Total per 60-second cycle** | | | **1.951 µAh** |
 
 **Revised average current:**
 
 ```
-I_avg = 1.942 µAh / (60/3600 h) = 1.942 / 0.01667 = 116.5 µA
+I_avg = 1.951 µAh / (60/3600 h) = 1.951 / 0.01667 = 117.1 µA
 ```
 
 Still 13x over budget. The SCD41 dominates even at 1/10th frequency.
@@ -245,19 +245,19 @@ SCD41 amortised charge per 60-second cycle:
   18.056 µAh + 0.2778 µAh = 18.334 µAh per CO2 measurement
   Amortised over 60 cycles: 18.334 / 60 = 0.3056 µAh per cycle
 
-All other charges per cycle: 0.1077 µAh
+All other charges per cycle: 0.1173 µAh
 
-Total: 0.413 µAh per 60-second cycle
-I_avg = 0.413 / 0.01667 = 24.8 µA
+Total: 0.423 µAh per 60-second cycle
+I_avg = 0.423 / 0.01667 = 25.4 µA
 ```
 
-With hourly CO2 measurements: I_avg = **24.8 µA** — still 2.75x over the 9 µA target.
+With hourly CO2 measurements: I_avg = **25.4 µA** — still 2.8x over the 9 µA target.
 
 **Reaching 9 µA requires either a different CO2 sensing technology or a different battery chemistry:**
 
 ```
 LiSOCl2 D-size battery: 19,000 mAh capacity.
-  At 24.8 µA average: 19,000 / 0.0248 = 766,129 hours = 87 years.
+  At 25.4 µA average: 19,000 / 0.0254 = 748,031 hours = 85 years.
   This comfortably meets a 10-year product life.
 
 For a coin-cell form factor with the SCD41: the 9 µA / 18-month target
@@ -326,10 +326,11 @@ With the boost converter and cold temperature derating, the revised budget is **
 ```
 Mode                    Current    Used for
 ----------------------  ---------  ------------------------------------------
-System-on (RAM off)     ~0.5 µA    Theoretical minimum; cannot retain application state
-System-on (RAM retain)  ~2.0 µA    Main sleep mode: all RAM retained, RTC running
-                                   TIMER0 armed for next wakeup
-                                   No peripheral clocks except RTC and TIMER
+System-on (RAM off)     ~1.0 µA    Theoretical minimum; cannot retain application state
+System-on (RAM retain)  ~2.0 µA    Main sleep mode: needed RAM retained, RTC running
+                                   RTC1 compare armed for next wakeup
+                                   No peripheral clocks except RTC (a TIMER needs
+                                   HFCLK: ~418 µA, far over budget)
 System-off              ~0.4 µA    Not used (too long to wake for 60-second interval)
 ```
 
@@ -378,8 +379,9 @@ void configure_sleep(void)
                  NRF_GPIO_PIN_NOSENSE);
 
     /* 5. Use RTC1 (32.768 kHz LFXO) as wakeup source.
-     *    RTC1 draws ~1.5 µA when running on LFXO crystal.
-     *    Using LFRC (RC oscillator) reduces to ~0.5 µA but adds ±2% timing error. */
+     *    The 32.768 kHz LFXO crystal oscillator draws ~0.23 µA.
+     *    Using LFRC (RC oscillator) instead draws more (~0.7 µA) and is less
+     *    accurate (±5% uncalibrated, ±500 ppm after calibration). */
     /* (Configured separately by the application timer subsystem) */
 }
 
@@ -407,15 +409,15 @@ void enter_sleep_until(uint32_t wakeup_ticks_from_now)
 | Component | Average current contribution |
 |---|---|
 | MCU sleep (2.0 µA system-on) | 1.94 µA (97.3% of cycle in sleep) |
-| SHT4x amortised | 0.007 µA |
-| SCD41 amortised (hourly) | 8.49 µA |
-| BLE advertisement amortised | 0.77 µA |
-| MCU active processing amortised | 0.33 µA |
-| I2C pull-ups amortised | 0.04 µA |
-| Load switch IQ | 0.017 µA |
-| **Total** | **11.6 µA** |
+| SHT4x amortised | 0.07 µA |
+| SCD41 amortised (hourly) | 18.33 µA |
+| BLE advertisement amortised | 1.67 µA |
+| MCU active processing amortised | 1.20 µA |
+| I2C pull-ups amortised | 0.11 µA |
+| Load switch IQ | 1.0 µA |
+| **Total** | **24.3 µA** |
 
-**Against the 11 µA revised budget (with boost converter at -20°C): marginal.**
+**Against the 11 µA revised budget (with boost converter at -20°C): about 2.2x over — not achievable with hourly CO2.**
 
 **Recommendations to the product team:**
 

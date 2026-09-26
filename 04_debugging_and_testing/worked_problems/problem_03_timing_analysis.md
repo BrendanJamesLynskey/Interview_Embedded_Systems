@@ -381,11 +381,11 @@ void vMotorCtrlTask(void *params) {
 **Example output after fix:**
 
 ```
-1s jitter: max=168643 min=167891 jitter=4 µs
+1s jitter: max=168643 min=167891 jitter=3 µs
 1s jitter: max=168521 min=167943 jitter=3 µs
 ```
 
-Maximum jitter of 4 µs on a 1 ms period. This is well within the motor control tolerance.
+Maximum jitter of about 4 µs (643 cycles; the integer division prints 3) on a 1 ms period. This is well within the motor control tolerance.
 
 ---
 
@@ -410,8 +410,8 @@ void CAN1_RX0_IRQHandler(void) {
 If `can_process_rx_fifo()` takes more than 50 µs (due to, say, deserialising many messages in a burst), this will add latency to the MotorCtrl task start. Solutions:
 
 1. **Minimise ISR work:** The ISR only copies the raw CAN frame to a queue. Processing happens in CommTask.
-2. **Set ISR priority appropriately:** CAN ISR should be at a lower priority than the FreeRTOS tick interrupt if possible, so FreeRTOS can still switch tasks during the ISR.
-3. **Use `taskENTER_CRITICAL_FROM_ISR()` only when necessary:** Critical sections disable interrupts entirely, preventing the FreeRTOS tick from running.
+2. **Set ISR priority appropriately:** On Cortex-M the FreeRTOS tick and PendSV run at the lowest interrupt priority (`configKERNEL_INTERRUPT_PRIORITY`), so no task switch can happen until the CAN ISR returns — its duration adds directly to MotorCtrl's start latency.
+3. **Use `taskENTER_CRITICAL_FROM_ISR()` only when necessary:** On Cortex-M, critical sections mask every interrupt at or below `configMAX_SYSCALL_INTERRUPT_PRIORITY` (including the FreeRTOS tick), delaying the tick and any task switch.
 
 ---
 
@@ -446,8 +446,8 @@ void print_task_stats(void) {
    MotorCtrl       18420       1%
    CommTask        5210        0%
    SensorTask      12300       1%
-   LogTask         45800       4%
-   IDLE            1618270     94%
+   LogTask         45800       2%
+   IDLE            1618270     95%
 
    If LogTask showed 30%+ CPU: excessive SPI write time is confirmed.
    If MotorCtrl shows 40%+: PID computation is too slow for 1 kHz. */
@@ -481,4 +481,4 @@ Simulation typically models the algorithm at ideal sample intervals and ignores:
 - Communication latency for setpoint updates (CAN frame reception time)
 - Mutual exclusion overhead (blocked reading sensor values)
 
-A real control system must account for all of these. A 1.1 ms delay in applying the control output to a fast-response motor is equivalent to running the control loop at 0.9 kHz instead of 1 kHz, which changes the closed-loop stability margins. If the PID was tuned for exactly 1 kHz sampling, intermittent 2 kHz or 0.5 kHz effective rates (during priority inversion) can cause the controller to go unstable and overshoot current limits.
+A real control system must account for all of these. A 1.1 ms delay in applying the control output to a fast-response motor stretches that sample period to 2.1 ms (an instantaneous rate of about 0.48 kHz instead of 1 kHz), which changes the closed-loop stability margins. If the PID was tuned for exactly 1 kHz sampling, intermittent 2 kHz or 0.5 kHz effective rates (during priority inversion) can cause the controller to go unstable and overshoot current limits.

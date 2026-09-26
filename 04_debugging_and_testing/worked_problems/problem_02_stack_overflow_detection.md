@@ -212,7 +212,7 @@ CommTask stack size:   256 words
 OVERFLOW by:           ~6 words = 24 bytes
 ```
 
-The 8-word HWM is consistent: the stack was used down to 256 - 262 = -6 words below the bottom, but the `0xA5` pattern is only checked for 16 bytes. The overflow of 24 bytes destroyed the adjacent task's stack region.
+The 8-word HWM does not agree exactly with this estimate: had the stack gone 6 words past the bottom, the `0xA5` fill at the bottom would have been overwritten and the HWM would read 0. The ~20-word parse-state figure is an estimate, so the measured peak (256 - 8 = 248 words) is the better number — either way only 32 bytes of headroom remain, and any slightly deeper path (a larger message, an interrupt frame) overflows into the adjacent task's stack region.
 
 ---
 

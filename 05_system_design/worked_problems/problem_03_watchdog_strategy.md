@@ -95,10 +95,11 @@ IWDG timeout selection:
     Prescaler: /256  -> timer clock = 32000/256 = 125 Hz (8 ms per tick)
     Reload value: 2000 ms / 8 ms = 250 ticks
 
+  IWDG->KR   = 0xCCCC;             /* start IWDG */
+  IWDG->KR   = 0x5555;             /* enable prescaler/reload write */
   IWDG->PR   = IWDG_PR_PR_DIV256;   /* prescaler = 256 */
   IWDG->RLR  = 250;                 /* reload = 250 ticks = 2000 ms */
-  IWDG->KR   = 0x5555;             /* enable prescaler/reload write */
-  IWDG->KR   = 0xCCCC;             /* start IWDG */
+  /* wait for IWDG->SR to clear, then refresh with 0xAAAA */
 ```
 
 **WWDG (Window Watchdog):**
@@ -119,7 +120,9 @@ WWDG window configuration:
   WWDG counter value: 7-bit (0x40 to 0x7F), effective range: 0x3F counts.
     Full range timeout: 63 * 0.328 ms = 20.6 ms. Too short for 100 ms task.
 
-  Increase prescaler: /8 is the maximum hardware prescaler for WWDG.
+  Increase prescaler: on the STM32H7 the WWDG prescaler goes up to /128
+  (older STM32 families stop at /8): 100 MHz / (4096 * 128) = 190.7 Hz
+  -> 5.24 ms per tick, full range 63 * 5.24 ms = 330 ms, enough for a 100 ms task.
   Alternative: use WWDG to protect a faster inner loop within the WatchdogTask.
 
   Revised approach: WWDG protects the MotorControl task (1 ms period),
@@ -131,9 +134,15 @@ WWDG window configuration:
     WWDG_CFR->W (window value) = 0x7F - 9 = 0x76.
     WWDG_CR->T  (counter)      = 0x7F (start at maximum, count down).
 
-    Kick must occur: when counter is between 0x76 and 0x40 (9-tick window).
+    Kick must occur: when counter is between 0x76 and 0x40, i.e. from 9 ticks
+    (~3 ms) to 63 ticks (~20.6 ms) after the previous reload.
     Too early (counter > 0x76): immediate reset.
     Too late (counter reaches 0x3F): reset.
+
+    Caution: a refresh every 1 ms (from MotorControl, Step 5) lands at counter
+    ~0x7C, above the 0x76 window, and resets the device; the WatchdogTask's
+    1 s refresh (Step 3) is far past the 20.6 ms limit. The refresh cadence
+    must fall inside the 3-20.6 ms window for this configuration to work.
 ```
 
 ### Step 3: Check-In Bitmap and Watchdog Task Design
@@ -488,8 +497,8 @@ To enable root cause analysis after a watchdog reset, critical state is saved to
 if (!all_healthy) {
     /* Log missed tasks to BKPSRAM before the impending reset */
     BKPSRAM->missed_task_bitmap  = (~snapshot) & WDT_ALL_TASKS_MASK;
-    BKPSRAM->motor_speed_rpm     = motor_get_speed_rpm();
-    BKPSRAM->motor_current_ma    = motor_get_current_ma();
+    BKPSRAM->last_speed_rpm      = motor_get_speed_rpm();
+    BKPSRAM->last_current_ma     = motor_get_current_ma();
     BKPSRAM->last_wdog_fail_tick = xTaskGetTickCount();
 
     /* DSB: ensure writes reach BKPSRAM before reset */
@@ -506,7 +515,7 @@ if (!all_healthy) {
 | Parameter | Value | Justification |
 |---|---|---|
 | IWDG timeout | 2000 ms | 2x the WatchdogTask period (1000 ms); allows one missed kick without spurious reset |
-| WWDG window | ~3 ms (9 ticks at 0.328 ms/tick) | Protects MotorControl task; 3x the task period (1 ms); detects both runaway (too fast) and hang (too slow) |
+| WWDG window | refresh ~3-20.6 ms after reload (9-63 ticks at 0.328 ms/tick) | Protects MotorControl task; detects both runaway (too fast) and hang (too slow); refresh cadence must fall inside the window |
 | WatchdogTask period | 1000 ms | Balances detection latency (< 2 s with IWDG) vs CPU overhead (<1 µs/s) |
 | OTA suspension limit | 10 minutes | Matches maximum expected download time on constrained link; beyond this, OTA is considered hung |
 | Max watchdog resets before lockout | 3 | Prevents infinite reset loop on systematic faults; requires operator intervention |

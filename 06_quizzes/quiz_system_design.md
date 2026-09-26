@@ -66,7 +66,7 @@ Suggested time: 25 minutes.
 **Q6.** An embedded device runs from a 3.6 V battery. In deep sleep, the microcontroller draws 2 uA and one external sensor draws 50 uA. The device wakes every 10 seconds, takes a 100 ms measurement, and during active measurement the MCU draws 5 mA and the sensor draws 500 uA. The average current consumption is approximately:
 
 - A) 2.6 mA (average of sleep and active currents)
-- B) Approximately 109 uA (dominated by the sensor sleep current with a small active contribution)
+- B) Approximately 106 uA (about half from the active bursts and half from the sensor sleep current)
 - C) 52 uA (the deep-sleep current only, ignoring wake events)
 - D) 5.5 mA (the active current, because the 100 ms measurement dominates at 10-second intervals)
 
@@ -93,7 +93,7 @@ Suggested time: 25 minutes.
 **Q9.** A low-power IoT device uses a 2000 mAh battery. In deep sleep it draws 5 uA; active (transmitting) it draws 30 mA for 200 ms every 60 seconds. Calculate the approximate battery life in days.
 
 - A) Approximately 4 days (dominated by transmit current)
-- B) Approximately 400 days (dominated by deep-sleep current with infrequent transmit duty)
+- B) Approximately 800 days (dominated by the transmit duty, with a small deep-sleep contribution)
 - C) Approximately 40 days
 - D) Approximately 1600 days (using only the sleep current)
 
@@ -167,7 +167,7 @@ Suggested time: 25 minutes.
 | 6  | B      |
 | 7  | B      |
 | 8  | B      |
-| 9  | C      |
+| 9  | B      |
 | 10 | B      |
 | 11 | B      |
 | 12 | B      |
@@ -211,7 +211,7 @@ A CRC (Cyclic Redundancy Check) or checksum over the entire image is the minimum
 
 **Q6 -- Answer: B**
 
-Calculate the average current using a duty-cycle weighted average. Active period: 100 ms out of every 10,000 ms = 1% duty cycle. Sleep period: 99% duty cycle. Active current: MCU 5 mA + sensor 0.5 mA = 5.5 mA. Sleep current: MCU 0.002 mA + sensor 0.05 mA = 0.052 mA. Average current = (0.01 x 5.5) + (0.99 x 0.052) = 0.055 + 0.0515 = approximately 0.106 mA = 106 uA, which is approximately 109 uA depending on rounding. The dominant contributor is the external sensor's sleep current (50 uA represents nearly half of the total), illustrating why peripheral sleep current is critical in low-power design. Option A (2.6 mA) is a naive average of the two states without weighting by duty cycle. Option C (52 uA) ignores the active contribution entirely. Option D (5.5 mA) ignores the 99% sleep duty cycle.
+Calculate the average current using a duty-cycle weighted average. Active period: 100 ms out of every 10,000 ms = 1% duty cycle. Sleep period: 99% duty cycle. Active current: MCU 5 mA + sensor 0.5 mA = 5.5 mA. Sleep current: MCU 0.002 mA + sensor 0.05 mA = 0.052 mA. Average current = (0.01 x 5.5) + (0.99 x 0.052) = 0.055 + 0.0515 = approximately 0.106 mA = 106 uA. The dominant contributor is the external sensor's sleep current (50 uA represents nearly half of the total), illustrating why peripheral sleep current is critical in low-power design. Option A (2.6 mA) is a naive average of the two states without weighting by duty cycle. Option C (52 uA) ignores the active contribution entirely. Option D (5.5 mA) ignores the 99% sleep duty cycle.
 
 ---
 
@@ -227,11 +227,9 @@ A robust A/B rollback mechanism needs to handle two failure modes. First, the ne
 
 ---
 
-**Q9 -- Answer: C**
+**Q9 -- Answer: B**
 
-Calculate the average current. Transmit period: 200 ms every 60 s = 200/60000 = 0.333% duty cycle. Sleep period: 99.667% duty cycle. Transmit current: 30 mA. Sleep current: 5 uA = 0.005 mA. Average current = (0.00333 x 30) + (0.99667 x 0.005) = 0.1 + 0.00498 = approximately 0.105 mA = 105 uA. Battery life = capacity / average current = 2000 mAh / 0.000105 A = approximately 1,905,000 hours / 24 = approximately 79,000 hours / 365 = approximately 216 days, or roughly 40 days as an order-of-magnitude check using 2000 mAh / 0.105 mA = 19,048 hours = 794 days. Let us recalculate: 2000 mAh / 0.105 mAh = 19,048 hours = 793 days. This is approximately 400 days at the upper end or 40 days at the lower end depending on assumptions. With 0.105 mA average: 2000 / 0.105 = 19,047 hours = 794 days. The closest answer is C (approximately 40 days) as an order-of-magnitude check, but 400 days (B) is closer numerically. The calculation shows approximately 800 days, but accounting for battery derating and non-ideal discharge, option C (40 days) is too low; option B (400 days) is in the right order of magnitude. The intended calculation: transmit contribution = (200ms/60s) x 30mA = 0.1 mA; sleep contribution = 0.005 mA; total ≈ 0.105 mA; 2000 mAh / 0.105 mA ≈ 19,000 hours ≈ 793 days, making B (approximately 400 days) the closest conservative real-world answer with battery efficiency derating.
-
-*Correction note: the intended answer is C based on a simplified calculation of (200ms/60s) x 30mA = 100uA average transmit + 5uA sleep = 105uA, and 2000mAh / 0.105mA ≈ 793 days, rounded conservatively to "approximately 400 days" (option B). For interview purposes, the key skill is demonstrating the duty-cycle calculation method, not the exact figure. The answer key records C to reflect that this question tests order-of-magnitude estimation.*
+Calculate the average current. Transmit period: 200 ms every 60 s = 0.333% duty cycle. Transmit contribution = 0.00333 x 30 mA = 0.1 mA; sleep contribution = 0.99667 x 0.005 mA = 0.005 mA; average ≈ 0.105 mA. Battery life = 2000 mAh / 0.105 mA ≈ 19,000 hours ≈ 793 days, so B (approximately 800 days) is correct before derating for self-discharge, temperature and end-of-life voltage. The transmit bursts, not the sleep current, dominate (0.1 mA of 0.105 mA). Option A (4 days) uses roughly the transmit current continuously. Option C (40 days) is a factor-of-20 slip. Option D (1600 days) does not follow from either current alone: sleep current only would give 2000 / 0.005 = 400,000 hours ≈ 45 years.
 
 ---
 
